@@ -2,14 +2,17 @@ package main
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/GregoryIan/manager/types"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 const (
@@ -19,6 +22,7 @@ const (
 )
 
 var defaultCount = 3
+var maxWaitCount = 600
 
 var (
 	cloudManagerAddr string
@@ -56,13 +60,17 @@ func main() {
 	case create:
 		checkCreateClusterParameter()
 		cluster := createCluster()
-		fmt.Printf("create cluster %s at %s\n", cluster, url)
 		xpost(url, cluster)
+		url = fmt.Sprintf("%s/%s", url, name)
+		getClusterAccessInfo(url)
 	case query:
 		if name != "" {
 			url = fmt.Sprintf("%s/%s", url, name)
 		}
-		xget(url)
+		resp := xget(url)
+		for _, cluster := range resp.Payload.Clusters {
+			fmt.Printf("cluster name %s, info %+v", cluster.Name, cluster)
+		}
 	case delete:
 		checkDeleteCluster()
 		url = fmt.Sprintf("%s/%s", url, name)
@@ -71,6 +79,80 @@ func main() {
 	default:
 		fatalf("unsupport cmd %s", cmd)
 	}
+}
+
+func getClusterAccessInfo(url string) {
+	var clusters []*types.Cluster
+	var cluster *types.Cluster
+	var index int
+	for ; index < maxWaitCount; index++ {
+		response := xget(url)
+		clusters = response.Payload.Clusters
+		if len(clusters) == 0 {
+			fatalf("don't find cluster")
+		}
+
+		cluster = clusters[0]
+		if len(cluster.TidbService.NodeIP) > 0 {
+			break
+		}
+		time.Sleep(time.Second)
+		continue
+	}
+
+	if index >= maxWaitCount {
+		xdelete(url)
+		fatalf("can't wait cluster %s", url)
+	}
+	waitTiDBOK(cluster, url)
+	fmt.Println("host:", cluster.TidbService.NodeIP[0])
+	fmt.Println("port:", cluster.TidbService.NodePort)
+}
+
+func waitTiDBOK(cluster *types.Cluster, url string) {
+	var (
+		index = 0
+		host  = cluster.TidbService.NodeIP[0]
+		port  = cluster.TidbService.NodePort
+	)
+
+	for ; index < maxWaitCount; index++ {
+		if err := connectTiDB(host, port); err != nil {
+			fmt.Printf("connection tidb error %v, continue\n", err)
+			time.Sleep(time.Second)
+			continue
+		}
+		break
+	}
+
+	if index >= maxWaitCount {
+		xdelete(url)
+		fatalf("can't wait cluster %s", url)
+	}
+}
+
+func connectTiDB(host string, port int) error {
+	dsn := fmt.Sprintf("root@tcp(%s:%d)/mysql?charset=utf8", host, port)
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	rs, err := db.Query("SELECT count(*) FROM mysql.tidb")
+	if err != nil {
+		return err
+	}
+	defer rs.Close()
+	var tidbCount int64
+	for rs.Next() {
+		err := rs.Scan(&tidbCount)
+		if err != nil {
+			return err
+		}
+		break
+	}
+
+	return nil
 }
 
 func checkCreateClusterParameter() {
@@ -129,7 +211,7 @@ func createCluster() []byte {
 	return body
 }
 
-func xget(url string) {
+func xget(url string) *types.Response {
 	res, err := http.Get(url)
 	if err != nil {
 		fatal(err.Error())
@@ -139,16 +221,27 @@ func xget(url string) {
 	if err != nil {
 		fatal(err.Error())
 	}
-	fmt.Printf("%s\n", content)
+
+	response := &types.Response{}
+	err = json.Unmarshal(content, response)
+	if err != nil {
+		fatalf("unmarshal error %v", err)
+	}
+
+	if response.StatusCode != 200 {
+		fatalf("fail to request %v", response)
+	}
+
+	return response
 }
 
-func xpost(url string, body []byte) {
+func xpost(url string, body []byte) *types.Response {
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		fatalf("create cluster request error %v", err)
 	}
-	request(req)
+	return request(req)
 }
 
 func xdelete(url string) {
@@ -159,7 +252,7 @@ func xdelete(url string) {
 	request(req)
 }
 
-func request(req *http.Request) {
+func request(req *http.Request) *types.Response {
 	client := &http.Client{}
 
 	resp, err := client.Do(req)
@@ -169,12 +262,26 @@ func request(req *http.Request) {
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode == 200 {
-		fmt.Println("success")
+	if resp.StatusCode != 200 {
+		fatalf("fail to request: status code %d", resp.StatusCode)
 	}
 
-	bodyByte, _ := ioutil.ReadAll(resp.Body)
-	fatalf("fail to request %s", bodyByte)
+	bodyByte, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fatalf("fail to read body %v", err)
+	}
+
+	response := &types.Response{}
+	err = json.Unmarshal(bodyByte, response)
+	if err != nil {
+		fatalf("unmarshal error %v", err)
+	}
+
+	if response.StatusCode != 200 {
+		fatalf("fail to request %v", response)
+	}
+
+	return response
 }
 
 func fatal(message string) {
