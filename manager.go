@@ -51,19 +51,22 @@ func main() {
 	}
 
 	url := cloudManagerAddr + "/pingcap.com/api/v1/clusters"
-	if name != "" {
-		url = fmt.Sprintf("%s/%s", url, name)
-	}
 
 	switch cmd {
 	case create:
 		checkCreateClusterParameter()
 		cluster := createCluster()
+		fmt.Printf("create cluster %s at %s\n", cluster, url)
 		xpost(url, cluster)
 	case query:
+		if name != "" {
+			url = fmt.Sprintf("%s/%s", url, name)
+		}
 		xget(url)
 	case delete:
 		checkDeleteCluster()
+		url = fmt.Sprintf("%s/%s", url, name)
+		fmt.Printf("delete cluster %s at %s\n", name, url)
 		xdelete(url)
 	default:
 		fatalf("unsupport cmd %s", cmd)
@@ -141,8 +144,9 @@ func xget(url string) {
 
 func xpost(url string, body []byte) {
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
 	if err != nil {
-		fatalf("create request error %v", err)
+		fatalf("create cluster request error %v", err)
 	}
 	request(req)
 }
@@ -150,7 +154,7 @@ func xpost(url string, body []byte) {
 func xdelete(url string) {
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
-		fatalf("create request error %v", err)
+		fatalf("delete cluster request error %v", err)
 	}
 	request(req)
 }
