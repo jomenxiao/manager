@@ -115,10 +115,12 @@ func waitTiDBOK(cluster *types.Cluster, url string) {
 		host  = cluster.TidbService.NodeIP[0]
 		port  = cluster.TidbService.NodePort
 	)
+	var err error
 
 	for ; index < maxWaitCount; index++ {
-		if err := connectTiDB(host, port); err != nil {
-			fmt.Printf("connection tidb error %v, continue\n", err)
+		err = connectTiDB(host, port)
+		if err != nil {
+			//fmt.Printf("connection tidb error %v, continue\n", err)
 			time.Sleep(time.Second)
 			continue
 		}
@@ -127,7 +129,7 @@ func waitTiDBOK(cluster *types.Cluster, url string) {
 
 	if index >= maxWaitCount {
 		xdelete(url)
-		fatalf("can't wait cluster %s", url)
+		fatalf("can't wait cluster %s, error %v", url, err)
 	}
 }
 
