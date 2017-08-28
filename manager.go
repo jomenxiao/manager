@@ -69,7 +69,7 @@ func main() {
 		}
 		resp := xget(url)
 		for _, cluster := range resp.Payload.Clusters {
-			fmt.Printf("cluster name %s, info %+v", cluster.Name, cluster)
+			fmt.Printf("%+v\n", cluster)
 		}
 	case delete:
 		checkDeleteCluster()
