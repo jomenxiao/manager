@@ -85,7 +85,7 @@ func getClusterAccessInfo(url string) {
 	var clusters []*types.Cluster
 	var cluster *types.Cluster
 	var index int
-	for ; index < maxWaitCount; index++ {
+	for ; index < maxWaitCount; index = index + 10 {
 		response := xget(url)
 		clusters = response.Payload.Clusters
 		if len(clusters) == 0 {
@@ -93,20 +93,50 @@ func getClusterAccessInfo(url string) {
 		}
 
 		cluster = clusters[0]
+
+		if !checkPodStatus(cluster.PdStatus, cluster.Pd.Size) {
+			time.Sleep(10 * time.Second)
+			continue
+		}
+
+		if !checkPodStatus(cluster.TikvStatus, cluster.Tikv.Size) {
+			time.Sleep(10 * time.Second)
+			continue
+		}
+
+		if !checkPodStatus(cluster.TidbStatus, cluster.Tidb.Size) {
+			time.Sleep(10 * time.Second)
+			continue
+		}
+
 		if len(cluster.TidbService.NodeIP) > 0 {
 			break
 		}
-		time.Sleep(time.Second)
+
+		time.Sleep(10 * time.Second)
 		continue
 	}
 
+	// wait bootstarp
+	time.Sleep(time.Minute)
 	if index >= maxWaitCount {
-		xdelete(url)
+		//xdelete(url)
 		fatalf("can't wait cluster %s", url)
 	}
 	waitTiDBOK(cluster, url)
 	fmt.Println("host:", cluster.TidbService.NodeIP[0])
 	fmt.Println("port:", cluster.TidbService.NodePort)
+}
+
+func checkPodStatus(status []types.PodStatus, size int) bool {
+	running := 0
+	for _, s := range status {
+		if s.Status == "Running" {
+			running++
+		}
+	}
+
+	return running >= size
 }
 
 func waitTiDBOK(cluster *types.Cluster, url string) {
