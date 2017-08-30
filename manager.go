@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"os"
 	"time"
@@ -24,7 +25,7 @@ const (
 var defaultPDCount = 1
 var defaultTiDBCount = 1
 var defaultTiKVCount = 5
-var maxWaitCount = 600
+var maxWaitCount = 60
 
 var (
 	cloudManagerAddr string
@@ -57,7 +58,6 @@ func main() {
 	}
 
 	url := cloudManagerAddr + "/pingcap.com/api/v1/clusters"
-
 	switch cmd {
 	case create:
 		checkCreateClusterParameter()
@@ -87,7 +87,7 @@ func getClusterAccessInfo(url string) {
 	var clusters []*types.Cluster
 	var cluster *types.Cluster
 	var index int
-	for ; index < maxWaitCount; index = index + 10 {
+	for ; index < maxWaitCount; index++ {
 		response := xget(url)
 		clusters = response.Payload.Clusters
 		if len(clusters) == 0 {
@@ -125,8 +125,8 @@ func getClusterAccessInfo(url string) {
 		//xdelete(url)
 		fatalf("can't wait cluster %s", url)
 	}
-	waitTiDBOK(cluster, url)
-	fmt.Println("host:", cluster.TidbService.NodeIP[0])
+	host := waitTiDBOK(cluster, url)
+	fmt.Println("host:", host)
 	fmt.Println("port:", cluster.TidbService.NodePort)
 }
 
@@ -141,32 +141,38 @@ func checkPodStatus(status []types.PodStatus, size int) bool {
 	return running >= size
 }
 
-func waitTiDBOK(cluster *types.Cluster, url string) {
+func waitTiDBOK(cluster *types.Cluster, url string) string {
+	length := len(cluster.TidbService.NodeIP)
+
 	var (
 		index = 0
-		host  = cluster.TidbService.NodeIP[0]
+		host  = "127.0.0.1"
 		port  = cluster.TidbService.NodePort
 	)
 	var err error
-
 	for ; index < maxWaitCount; index++ {
+		selectedNode := rand.Int() % length
+		host = cluster.TidbService.NodeIP[selectedNode]
+
 		err = connectTiDB(host, port)
 		if err != nil {
-			//fmt.Printf("connection tidb error %v, continue\n", err)
-			time.Sleep(time.Second)
+			fmt.Printf("connection tidb %s:%d error %v, continue\n", host, port, err)
+			time.Sleep(5 * time.Second)
 			continue
 		}
 		break
 	}
 
 	if index >= maxWaitCount {
-		xdelete(url)
+		// xdelete(url)
 		fatalf("can't wait cluster %s, error %v", url, err)
 	}
+
+	return host
 }
 
 func connectTiDB(host string, port int) error {
-	dsn := fmt.Sprintf("root@tcp(%s:%d)/mysql?charset=utf8", host, port)
+	dsn := fmt.Sprintf("root@tcp(%s:%d)/mysql?charset=utf8&timeout=3s", host, port)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return err
