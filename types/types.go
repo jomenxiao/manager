@@ -13,9 +13,21 @@ type PodStatus struct {
 }
 
 type PodSpec struct {
-	Size         int               `json:"size"`
-	Version      string            `json:"version,omitempty"`
-	NodeSelector map[string]string `json:"node_selector,omitempty"`
+	Size         int                  `json:"size"`
+	Version      string               `json:"version,omitempty"`
+	Requests     *ResourceRequirement `json:"requests,omitempty"`
+	Limits       *ResourceRequirement `json:"limits,omitempty"`
+	NodeSelector map[string]string    `json:"node_selector,omitempty"`
+}
+
+// ResourceRequirement is resource requirements for a pod
+type ResourceRequirement struct {
+	// CPU is how many cores a pod requires
+	CPU string `json:"cpu,omitempty"`
+	// Memory is how much memory a pod requires
+	Memory string `json:"memory,omitempty"`
+	// Storage is storage size a pod requires
+	Storage string `json:"storage,omitempty"`
 }
 
 type Cluster struct {

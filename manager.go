@@ -21,7 +21,9 @@ const (
 	delete = "delete"
 )
 
-var defaultCount = 3
+var defaultPDCount = 1
+var defaultTiDBCount = 1
+var defaultTiKVCount = 5
 var maxWaitCount = 600
 
 var (
@@ -43,9 +45,9 @@ func init() {
 	flag.StringVar(&tidbVersion, "tidb-version", "", "tidb image version")
 	flag.StringVar(&tikvVersion, "tikv-version", "", "tikv image version")
 	flag.StringVar(&pdVersion, "pd-version", "", "pd image version")
-	flag.IntVar(&tidbCount, "tidb-count", defaultCount, "tidb pod count")
-	flag.IntVar(&tikvCount, "tikv-count", defaultCount, "tikv pod count")
-	flag.IntVar(&pdCount, "pd-count", defaultCount, "pd pod count")
+	flag.IntVar(&tidbCount, "tidb-count", defaultTiDBCount, "tidb pod count")
+	flag.IntVar(&tikvCount, "tikv-count", defaultTiKVCount, "tikv pod count")
+	flag.IntVar(&pdCount, "pd-count", defaultPDCount, "pd pod count")
 }
 
 func main() {
