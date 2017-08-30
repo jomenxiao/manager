@@ -211,6 +211,10 @@ func checkCreateClusterParameter() {
 	if pdVersion == "" {
 		fatal("lack of pd version")
 	}
+
+	if tidbCount < 3 {
+		tidbCount = 3
+	}
 }
 
 func checkDeleteCluster() {
