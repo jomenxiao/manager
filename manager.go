@@ -25,7 +25,7 @@ var defaultPDCount = 1
 var defaultTiDBCount = 1
 var defaultTiKVCount = 5
 var maxWaitCount = 100
-var maunalVersion = "add nodeselector(2017-8-31 22:47)"
+var maunalVersion = "modify tikv count(2017-8-31 22:47)"
 
 var (
 	cloudManagerAddr string
