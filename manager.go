@@ -228,8 +228,12 @@ func checkCreateClusterParameter() {
 		fatal("lack of pd version")
 	}
 
-	if tidbCount < 3 {
-		tidbCount = 3
+	if tidbCount < 2 {
+		tidbCount = 2
+	}
+
+	if tikvCount > 4 {
+		tikvCount = 4
 	}
 }
 
