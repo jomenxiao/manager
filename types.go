@@ -56,8 +56,9 @@ type Cluster struct {
 func (c Cluster) String() string {
 	header := fmt.Sprintf("---------------------- %s --------------------\n", c.Name)
 	specBody := fmt.Sprintf("Spec:\n  PD: %+v\n  tikv: %+v\n  tidb: %+v\n", c.Pd, c.Tikv, c.Tidb)
-	statusBody := fmt.Sprintf("Status:\n  tidb-service: %+v\n  pd-status: %+v\n  tidb-status: %+v\n  tikv-status: %+v\n", c.TidbService, c.PdStatus, c.TidbStatus, c.TikvStatus)
-	return header + specBody + statusBody
+	statusBody := fmt.Sprintf("Status:\n  pd-status: %+v\n  tidb-status: %+v\n  tikv-status: %+v\n", c.PdStatus, c.TidbStatus, c.TikvStatus)
+	serviceBody := fmt.Sprintf("service:\n tidb-service: %+v\n prometheuse service: %+v\n grafana service: %+v\n", c.TidbService, c.PrometheusService, c.GrafanaService)
+	return header + specBody + statusBody + serviceBody
 }
 
 type Service struct {

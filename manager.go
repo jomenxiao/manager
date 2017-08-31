@@ -24,8 +24,8 @@ const (
 var defaultPDCount = 1
 var defaultTiDBCount = 1
 var defaultTiKVCount = 5
-var maxWaitCount = 60
-var maunalVersion = "add monitor(2017-8-31 11:47)"
+var maxWaitCount = 100
+var maunalVersion = "add grafana(2017-8-31 14:47)"
 
 var (
 	cloudManagerAddr string
@@ -133,6 +133,8 @@ func getClusterAccessInfo(url string) {
 		fatalf("can't wait cluster %s", url)
 	}
 	host := waitTiDBOK(cluster, url)
+	fmt.Printf("grafana: %s:%d\n", host, cluster.GrafanaService.NodePort)
+	fmt.Println("TiDB")
 	fmt.Println("host:", host)
 	fmt.Println("port:", cluster.TidbService.NodePort)
 }
@@ -149,8 +151,13 @@ func checkPodStatus(status []PodStatus, size int) bool {
 }
 
 func waitTiDBOK(cluster *Cluster, url string) string {
-	length := len(cluster.TidbService.NodeIP)
+	TiDBNodes := make([]string, 0, cluster.Tidb.Size)
+	for _, pod := range cluster.TidbStatus {
+		TiDBNodes = append(TiDBNodes, pod.NodeIP)
+	}
 
+	availableNode := computeNodes(cluster.TidbService.NodeIP, TiDBNodes)
+	length := len(availableNode)
 	var (
 		index = 0
 		host  = "127.0.0.1"
@@ -159,7 +166,7 @@ func waitTiDBOK(cluster *Cluster, url string) string {
 	var err error
 	for ; index < maxWaitCount; index++ {
 		selectedNode := rand.Int() % length
-		host = cluster.TidbService.NodeIP[selectedNode]
+		host = availableNode[selectedNode]
 
 		err = connectTiDB(host, port)
 		if err != nil {
@@ -350,4 +357,20 @@ func fatalf(format string, args ...interface{}) {
 	fmt.Printf(format, args...)
 	fmt.Println("")
 	os.Exit(-1)
+}
+
+func computeNodes(s []string, t []string) []string {
+	tm := make(map[string]struct{})
+	for _, node := range t {
+		tm[node] = struct{}{}
+	}
+
+	nodes := make([]string, 0, len(s))
+	for _, node := range s {
+		if _, ok := tm[node]; !ok {
+			nodes = append(nodes, node)
+		}
+	}
+
+	return nodes
 }
