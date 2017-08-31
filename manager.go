@@ -25,6 +25,7 @@ var defaultPDCount = 1
 var defaultTiDBCount = 1
 var defaultTiKVCount = 5
 var maxWaitCount = 60
+var maunalVersion = "add monitor(2017-8-31 11:47)"
 
 var (
 	cloudManagerAddr string
@@ -36,6 +37,7 @@ var (
 	pdVersion        string
 	pdCount          int
 	name             string
+	version          bool
 )
 
 func init() {
@@ -48,10 +50,16 @@ func init() {
 	flag.IntVar(&tidbCount, "tidb-count", defaultTiDBCount, "tidb pod count")
 	flag.IntVar(&tikvCount, "tikv-count", defaultTiKVCount, "tikv pod count")
 	flag.IntVar(&pdCount, "pd-count", defaultPDCount, "pd pod count")
+	flag.BoolVar(&version, "V", false, "print version")
 }
 
 func main() {
 	flag.Parse()
+	if version {
+		fmt.Printf("version: %s\n", maunalVersion)
+		return
+	}
+
 	if cloudManagerAddr == "" {
 		fatal("lack of cloud-manager-addr")
 	}
