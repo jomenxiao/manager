@@ -25,7 +25,7 @@ var defaultPDCount = 1
 var defaultTiDBCount = 1
 var defaultTiKVCount = 5
 var maxWaitCount = 100
-var maunalVersion = "add grafana(2017-8-31 14:47)"
+var maunalVersion = "add nodeselector(2017-8-31 22:47)"
 
 var (
 	cloudManagerAddr string
@@ -38,6 +38,7 @@ var (
 	pdCount          int
 	name             string
 	version          bool
+	label            string
 )
 
 func init() {
@@ -50,6 +51,7 @@ func init() {
 	flag.IntVar(&tidbCount, "tidb-count", defaultTiDBCount, "tidb pod count")
 	flag.IntVar(&tikvCount, "tikv-count", defaultTiKVCount, "tikv pod count")
 	flag.IntVar(&pdCount, "pd-count", defaultPDCount, "pd pod count")
+	flag.StringVar(&label, "label", "", "label for node selector")
 	flag.BoolVar(&version, "V", false, "print version")
 }
 
@@ -244,25 +246,35 @@ func createClusterRequest() *Cluster {
 		MonitorReserveDays: 14,
 	}
 
+	var nodeSelector map[string]string
+	if label != "" {
+		nodeSelector = make(map[string]string)
+		nodeSelector[label] = "allow"
+	}
 	cluster.Pd = &PodSpec{
-		Version: pdVersion,
-		Size:    pdCount,
+		Version:      pdVersion,
+		Size:         pdCount,
+		NodeSelector: nodeSelector,
 	}
 
 	cluster.Tikv = &PodSpec{
-		Version: tikvVersion,
-		Size:    tikvCount,
+		Version:      tikvVersion,
+		Size:         tikvCount,
+		NodeSelector: nodeSelector,
 	}
 
 	cluster.Tidb = &PodSpec{
-		Version: tidbVersion,
-		Size:    tidbCount,
+		Version:      tidbVersion,
+		Size:         tidbCount,
+		NodeSelector: nodeSelector,
 	}
 
 	cluster.Monitor = &PodSpec{
-		Version: "4.2.0,v1.5.2,v0.3.1",
-		Size:    1,
+		Version:      "4.2.0,v1.5.2,v0.3.1",
+		Size:         1,
+		NodeSelector: nodeSelector,
 	}
+
 	return cluster
 }
 
