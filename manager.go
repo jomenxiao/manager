@@ -12,7 +12,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/GregoryIan/manager/types"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -84,8 +83,8 @@ func main() {
 }
 
 func getClusterAccessInfo(url string) {
-	var clusters []*types.Cluster
-	var cluster *types.Cluster
+	var clusters []*Cluster
+	var cluster *Cluster
 	var index int
 	for ; index < maxWaitCount; index++ {
 		response := xget(url)
@@ -130,7 +129,7 @@ func getClusterAccessInfo(url string) {
 	fmt.Println("port:", cluster.TidbService.NodePort)
 }
 
-func checkPodStatus(status []types.PodStatus, size int) bool {
+func checkPodStatus(status []PodStatus, size int) bool {
 	running := 0
 	for _, s := range status {
 		if s.Status == "Running" {
@@ -141,7 +140,7 @@ func checkPodStatus(status []types.PodStatus, size int) bool {
 	return running >= size
 }
 
-func waitTiDBOK(cluster *types.Cluster, url string) string {
+func waitTiDBOK(cluster *Cluster, url string) string {
 	length := len(cluster.TidbService.NodeIP)
 
 	var (
@@ -223,26 +222,32 @@ func checkDeleteCluster() {
 	}
 }
 
-func createClusterRequest() *types.Cluster {
-	cluster := &types.Cluster{
-		Name: name,
+func createClusterRequest() *Cluster {
+	cluster := &Cluster{
+		Name:               name,
+		TidbLease:          5,
+		MonitorReserveDays: 14,
 	}
 
-	cluster.Pd = &types.PodSpec{
+	cluster.Pd = &PodSpec{
 		Version: pdVersion,
 		Size:    pdCount,
 	}
 
-	cluster.Tikv = &types.PodSpec{
+	cluster.Tikv = &PodSpec{
 		Version: tikvVersion,
 		Size:    tikvCount,
 	}
 
-	cluster.Tidb = &types.PodSpec{
+	cluster.Tidb = &PodSpec{
 		Version: tidbVersion,
 		Size:    tidbCount,
 	}
 
+	cluster.Monitor = &PodSpec{
+		Version: "4.2.0,v1.5.2,v0.3.1",
+		Size:    1,
+	}
 	return cluster
 }
 
@@ -255,7 +260,7 @@ func createCluster() []byte {
 	return body
 }
 
-func xget(url string) *types.Response {
+func xget(url string) *Response {
 	res, err := http.Get(url)
 	if err != nil {
 		fatal(err.Error())
@@ -266,7 +271,7 @@ func xget(url string) *types.Response {
 		fatal(err.Error())
 	}
 
-	response := &types.Response{}
+	response := &Response{}
 	err = json.Unmarshal(content, response)
 	if err != nil {
 		fatalf("unmarshal error %v", err)
@@ -279,7 +284,7 @@ func xget(url string) *types.Response {
 	return response
 }
 
-func xpost(url string, body []byte) *types.Response {
+func xpost(url string, body []byte) *Response {
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	if err != nil {
@@ -296,7 +301,7 @@ func xdelete(url string) {
 	request(req)
 }
 
-func request(req *http.Request) *types.Response {
+func request(req *http.Request) *Response {
 	client := &http.Client{}
 
 	resp, err := client.Do(req)
@@ -315,7 +320,7 @@ func request(req *http.Request) *types.Response {
 		fatalf("fail to read body %v", err)
 	}
 
-	response := &types.Response{}
+	response := &Response{}
 	err = json.Unmarshal(bodyByte, response)
 	if err != nil {
 		fatalf("unmarshal error %v", err)
