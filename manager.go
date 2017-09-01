@@ -25,7 +25,7 @@ var defaultPDCount = 1
 var defaultTiDBCount = 1
 var defaultTiKVCount = 5
 var maxWaitCount = 100
-var maunalVersion = "remove monitor nodeSelector(2017-8-31 23:47)"
+var maunalVersion = "fix monitor nodeSelector(2017-8-31 23:47)"
 
 var (
 	cloudManagerAddr string
@@ -274,8 +274,9 @@ func createClusterRequest() *Cluster {
 	}
 
 	cluster.Monitor = &PodSpec{
-		Version: "4.2.0,v1.5.2,v0.3.1",
-		Size:    1,
+		Version:      "4.2.0,v1.5.2,v0.3.1",
+		Size:         1,
+		NodeSelector: map[string]string{"kind": "monitor"},
 	}
 
 	return cluster
