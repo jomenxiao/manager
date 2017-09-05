@@ -136,9 +136,7 @@ func getClusterAccessInfo(url string) {
 	}
 	host := waitTiDBOK(cluster, url)
 	fmt.Printf("grafana: %s:%d\n", host, cluster.GrafanaService.NodePort)
-	fmt.Println("TiDB")
-	fmt.Println("host:", host)
-	fmt.Println("port:", cluster.TidbService.NodePort)
+	fmt.Println("-host", host, "-port", cluster.TidbService.NodePort)
 }
 
 func checkPodStatus(status []PodStatus, size int) bool {
