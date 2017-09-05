@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -25,7 +26,7 @@ var defaultPDCount = 1
 var defaultTiDBCount = 1
 var defaultTiKVCount = 5
 var maxWaitCount = 100
-var maunalVersion = "remove script(2017-9-5 23:47)"
+var maunalVersion = "generate config(2017-9-5 23:47)"
 
 var (
 	cloudManagerAddr string
@@ -39,6 +40,8 @@ var (
 	name             string
 	version          bool
 	label            string
+	caseStr          string
+	cases            []string
 )
 
 func init() {
@@ -52,6 +55,7 @@ func init() {
 	flag.IntVar(&tikvCount, "tikv-count", defaultTiKVCount, "tikv pod count")
 	flag.IntVar(&pdCount, "pd-count", defaultPDCount, "pd pod count")
 	flag.StringVar(&label, "label", "", "label for node selector")
+	flag.StringVar(&caseStr, "t", "", "cases")
 	flag.BoolVar(&version, "V", false, "print version")
 }
 
@@ -139,6 +143,24 @@ func getClusterAccessInfo(url string) {
 	fmt.Println("TiDB")
 	fmt.Println("host:", host)
 	fmt.Println("port:", cluster.TidbService.NodePort)
+	mustModifyConfig(host, cluster.TidbService.NodePort)
+}
+
+func mustModifyConfig(host string, port int) {
+	cfg, err := ParseConfig("./config.toml")
+	if err != nil {
+		fatalf("parse config error %v", err)
+	}
+
+	cfg.Host = host
+	cfg.Port = port
+	cfg.Suite.Names = cases
+
+	err = writeConfig("./config.toml", cfg)
+	if err != nil {
+		fatalf("write config error %v", err)
+	}
+	fmt.Println("sucess to generate config.toml")
 }
 
 func checkPodStatus(status []PodStatus, size int) bool {
@@ -214,6 +236,15 @@ func connectTiDB(host string, port int) error {
 func checkCreateClusterParameter() {
 	if name == "" {
 		fatal("lack of cluster name")
+	}
+
+	if len(caseStr) == 0 {
+		fatal("lack of case")
+	}
+
+	cases = strings.Split(caseStr, ",")
+	if len(cases) == 0 {
+		fatal("lack of case")
 	}
 
 	if tidbVersion == "" {
