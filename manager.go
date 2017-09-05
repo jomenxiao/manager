@@ -26,7 +26,7 @@ var defaultPDCount = 1
 var defaultTiDBCount = 1
 var defaultTiKVCount = 5
 var maxWaitCount = 100
-var maunalVersion = "generate config(2017-9-5 23:47)"
+var maunalVersion = "generate case(2017-9-5 23:47)"
 
 var (
 	cloudManagerAddr string
@@ -154,7 +154,9 @@ func mustModifyConfig(host string, port int) {
 
 	cfg.Host = host
 	cfg.Port = port
-	cfg.Suite.Names = cases
+	if len(cases) > 0 {
+		cfg.Suite.Names = cases
+	}
 
 	err = writeConfig("./config.toml", cfg)
 	if err != nil {
@@ -238,13 +240,8 @@ func checkCreateClusterParameter() {
 		fatal("lack of cluster name")
 	}
 
-	if len(caseStr) == 0 {
-		fatal("lack of case")
-	}
-
-	cases = strings.Split(caseStr, ",")
-	if len(cases) == 0 {
-		fatal("lack of case")
+	if len(caseStr) > 0 {
+		cases = strings.Split(caseStr, ",")
 	}
 
 	if tidbVersion == "" {
