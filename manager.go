@@ -25,7 +25,7 @@ var defaultPDCount = 1
 var defaultTiDBCount = 1
 var defaultTiKVCount = 5
 var maxWaitCount = 100
-var maunalVersion = "fix monitor nodeSelector(2017-8-31 23:47)"
+var maunalVersion = "remove script(2017-9-5 23:47)"
 
 var (
 	cloudManagerAddr string
