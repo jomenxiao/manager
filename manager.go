@@ -104,7 +104,9 @@ func getClusterAccessInfo(url string) {
 		response := xget(url)
 		clusters = response.Payload.Clusters
 		if len(clusters) == 0 {
-			fatalf("don't find cluster")
+			time.Sleep(10*time.Second)
+			fmt.Println("don't find cluster")
+			continue
 		}
 
 		cluster = clusters[0]
